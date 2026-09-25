@@ -62,4 +62,12 @@ func printSummary(w *os.File, s testtally.Summary) {
 			fmt.Fprintf(w, "  %-8s %s %s\n", r.Elapsed.Round(time.Millisecond), r.Package, r.Test)
 		}
 	}
+
+	if len(s.Packages) > 1 {
+		fmt.Fprintln(w, "\npackages:")
+		for _, p := range s.Packages {
+			fmt.Fprintf(w, "  %-8s %d passed, %d failed, %d skipped (%s)\n",
+				p.Package, p.Passed, p.Failed, p.Skipped, p.Duration.Round(time.Millisecond))
+		}
+	}
 }

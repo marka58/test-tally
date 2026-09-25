@@ -135,4 +135,52 @@ func TestSummarizeEmptyInput(t *testing.T) {
 	if s.Failures != nil {
 		t.Errorf("Failures = %+v, want nil", s.Failures)
 	}
+	if s.Packages != nil {
+		t.Errorf("Packages = %+v, want nil", s.Packages)
+	}
+}
+
+func TestSummarizePackagesTallySeparately(t *testing.T) {
+	events := []Event{
+		{Action: ActionPass, Package: "widget", Test: "TestA", Elapsed: 0.01},
+		{Action: ActionFail, Package: "widget", Test: "TestB", Elapsed: 0.02},
+		{Action: ActionPass, Package: "gadget", Test: "TestC", Elapsed: 0.03},
+		{Action: ActionSkip, Package: "gadget", Test: "TestD", Elapsed: 0},
+	}
+
+	s := Summarize(events)
+
+	want := []PackageResult{
+		{Package: "gadget", Passed: 1, Skipped: 1, Duration: 30 * time.Millisecond},
+		{Package: "widget", Passed: 1, Failed: 1, Duration: 30 * time.Millisecond},
+	}
+	if !reflect.DeepEqual(s.Packages, want) {
+		t.Errorf("Packages = %+v, want %+v", s.Packages, want)
+	}
+}
+
+func TestSummarizePackagesSortedByName(t *testing.T) {
+	events := []Event{
+		{Action: ActionPass, Package: "zebra", Test: "TestA", Elapsed: 0.01},
+		{Action: ActionPass, Package: "apple", Test: "TestB", Elapsed: 0.01},
+		{Action: ActionPass, Package: "mango", Test: "TestC", Elapsed: 0.01},
+	}
+
+	s := Summarize(events)
+
+	var names []string
+	for _, p := range s.Packages {
+		names = append(names, p.Package)
+	}
+	want := []string{"apple", "mango", "zebra"}
+	if !reflect.DeepEqual(names, want) {
+		t.Errorf("package order = %v, want %v", names, want)
+	}
+}
+
+func TestSummarizePackageTotal(t *testing.T) {
+	p := PackageResult{Passed: 2, Failed: 1, Skipped: 3}
+	if got, want := p.Total(), 6; got != want {
+		t.Errorf("Total() = %d, want %d", got, want)
+	}
 }

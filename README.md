@@ -31,7 +31,14 @@ slowest:
   310ms    github.com/example/widget TestSlowIntegration
   120ms    github.com/example/widget TestParseConfig
   40ms     github.com/example/widget TestBasic
+
+packages:
+  github.com/example/gadget  12 passed, 0 failed, 0 skipped (210ms)
+  github.com/example/widget  30 passed, 1 failed, 2 skipped (1.074s)
 ```
+
+The package breakdown is only printed when the run touched more than one
+package; a single-package run already has the top line to summarize it.
 
 The exit code is 1 if any test failed, 0 otherwise, so it works as a
 drop-in replacement for `go test` in a CI step that only cares about
@@ -68,9 +75,9 @@ assert on the output, no fixtures or subprocesses needed.
 
 ## Status
 
-Early. The JSON event format and the pass/fail/slowest summary work.
-Not yet covered: flaky-test detection across repeated runs, package-level
-breakdowns, and output formats other than plain text.
+Early. The JSON event format, the pass/fail/slowest summary, and the
+per-package breakdown work. Not yet covered: flaky-test detection across
+repeated runs and output formats other than plain text.
 
 ## License
 
