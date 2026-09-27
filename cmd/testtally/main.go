@@ -5,9 +5,11 @@
 //
 //	go test -json ./... | testtally
 //	testtally -in run.jsonl
+//	testtally -json | jq .
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +20,7 @@ import (
 
 func main() {
 	inPath := flag.String("in", "", "path to a go test -json log (default: stdin)")
+	jsonOut := flag.Bool("json", false, "print the summary as JSON instead of plain text")
 	flag.Parse()
 
 	in := os.Stdin
@@ -38,11 +41,24 @@ func main() {
 	}
 
 	summary := testtally.Summarize(events)
-	printSummary(os.Stdout, summary)
+	if *jsonOut {
+		if err := printSummaryJSON(os.Stdout, summary); err != nil {
+			fmt.Fprintln(os.Stderr, "testtally:", err)
+			os.Exit(1)
+		}
+	} else {
+		printSummary(os.Stdout, summary)
+	}
 
 	if summary.Failed > 0 {
 		os.Exit(1)
 	}
+}
+
+// printSummaryJSON writes the summary as a single JSON object, so a CI
+// step can parse it instead of scraping the plain-text report.
+func printSummaryJSON(w *os.File, s testtally.Summary) error {
+	return json.NewEncoder(w).Encode(s)
 }
 
 func printSummary(w *os.File, s testtally.Summary) {

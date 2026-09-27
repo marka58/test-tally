@@ -1,26 +1,46 @@
 package testtally
 
 import (
+	"encoding/json"
 	"sort"
 	"time"
 )
 
 // TestResult is one finished test, extracted from a slice of Events.
 type TestResult struct {
-	Package string
-	Test    string
-	Elapsed time.Duration
+	Package string        `json:"package"`
+	Test    string        `json:"test"`
+	Elapsed time.Duration `json:"elapsedNs"`
 }
 
 // Summary is the outcome of tallying a run's Events.
 type Summary struct {
-	Passed   int
-	Failed   int
-	Skipped  int
-	Duration time.Duration
-	Failures []TestResult
-	Slowest  []TestResult
-	Packages []PackageResult
+	Passed   int             `json:"passed"`
+	Failed   int             `json:"failed"`
+	Skipped  int             `json:"skipped"`
+	Duration time.Duration   `json:"durationNs"`
+	Failures []TestResult    `json:"failures"`
+	Slowest  []TestResult    `json:"slowest"`
+	Packages []PackageResult `json:"packages"`
+}
+
+// MarshalJSON encodes the summary with empty arrays in place of Go's zero
+// value for an unset slice. Summarize leaves Failures, Slowest, and
+// Packages nil on an empty run; a CI step decoding this JSON shouldn't
+// have to special-case null versus [].
+func (s Summary) MarshalJSON() ([]byte, error) {
+	type alias Summary
+	a := alias(s)
+	if a.Failures == nil {
+		a.Failures = []TestResult{}
+	}
+	if a.Slowest == nil {
+		a.Slowest = []TestResult{}
+	}
+	if a.Packages == nil {
+		a.Packages = []PackageResult{}
+	}
+	return json.Marshal(a)
 }
 
 // Total returns the number of tests accounted for in the summary.
@@ -31,11 +51,11 @@ func (s Summary) Total() int {
 // PackageResult is the pass/fail/skip tally for a single package, extracted
 // from a slice of Events.
 type PackageResult struct {
-	Package  string
-	Passed   int
-	Failed   int
-	Skipped  int
-	Duration time.Duration
+	Package  string        `json:"package"`
+	Passed   int           `json:"passed"`
+	Failed   int           `json:"failed"`
+	Skipped  int           `json:"skipped"`
+	Duration time.Duration `json:"durationNs"`
 }
 
 // Total returns the number of tests accounted for in the package.

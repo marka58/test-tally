@@ -1,6 +1,7 @@
 package testtally
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -175,6 +176,51 @@ func TestSummarizePackagesSortedByName(t *testing.T) {
 	want := []string{"apple", "mango", "zebra"}
 	if !reflect.DeepEqual(names, want) {
 		t.Errorf("package order = %v, want %v", names, want)
+	}
+}
+
+func TestSummaryMarshalJSONEmptyRunUsesEmptyArrays(t *testing.T) {
+	s := Summarize(nil)
+
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(b, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	for _, field := range []string{"failures", "slowest", "packages"} {
+		if got := string(decoded[field]); got != "[]" {
+			t.Errorf("field %q = %s, want []", field, got)
+		}
+	}
+}
+
+func TestSummaryMarshalJSONRoundTrip(t *testing.T) {
+	events := []Event{
+		{Action: ActionPass, Package: "widget", Test: "TestA", Elapsed: 0.01},
+		{Action: ActionFail, Package: "widget", Test: "TestB", Elapsed: 0.02},
+	}
+	s := Summarize(events)
+
+	b, err := json.Marshal(s)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var got Summary
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	if got.Passed != s.Passed || got.Failed != s.Failed {
+		t.Errorf("got %+v, want %+v", got, s)
+	}
+	if !reflect.DeepEqual(got.Failures, s.Failures) {
+		t.Errorf("Failures = %+v, want %+v", got.Failures, s.Failures)
 	}
 }
 

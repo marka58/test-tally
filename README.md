@@ -51,6 +51,18 @@ go test -json ./... > run.jsonl
 testtally -in run.jsonl
 ```
 
+Pass `-json` to get the same summary as a single JSON object instead of
+the plain-text report, for a CI step that wants to parse it rather than
+scrape it:
+
+```
+go test -json ./... | testtally -json
+```
+
+```json
+{"passed":42,"failed":1,"skipped":2,"durationNs":1284000000,"failures":[{"package":"github.com/example/widget","test":"TestParseConfig","elapsedNs":120000000}],"slowest":[...],"packages":[...]}
+```
+
 ## Library
 
 The parsing and tallying logic lives in the root package and is meant to
@@ -75,9 +87,9 @@ assert on the output, no fixtures or subprocesses needed.
 
 ## Status
 
-Early. The JSON event format, the pass/fail/slowest summary, and the
-per-package breakdown work. Not yet covered: flaky-test detection across
-repeated runs and output formats other than plain text.
+Early. The JSON event format, the pass/fail/slowest summary, the
+per-package breakdown, and JSON output work. Not yet covered:
+flaky-test detection across repeated runs.
 
 ## License
 
