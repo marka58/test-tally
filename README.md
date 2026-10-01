@@ -63,6 +63,27 @@ go test -json ./... | testtally -json
 {"passed":42,"failed":1,"skipped":2,"durationNs":1284000000,"failures":[{"package":"github.com/example/widget","test":"TestParseConfig","elapsedNs":120000000}],"slowest":[...],"packages":[...]}
 ```
 
+### Flaky tests
+
+Run the suite several times, save each run, and pass the logs with
+`-flaky`:
+
+```
+for i in 1 2 3; do go test -count=1 -json ./... > run$i.jsonl; done
+testtally -flaky run1.jsonl run2.jsonl run3.jsonl
+```
+
+```
+1 flaky in 3 runs:
+  github.com/example/widget TestRetry (2 passed, 1 failed)
+```
+
+A test is flaky if it passed in at least one run and failed in at least
+one. Tests that always fail, or that were only skipped in some runs, are
+not reported. The exit code is 1 if any flaky test is found. `-json`
+prints the list as a JSON array. In the library this is
+`Flaky([][]Event) []FlakyTest`.
+
 ## Library
 
 The parsing and tallying logic lives in the root package and is meant to
@@ -88,8 +109,8 @@ assert on the output, no fixtures or subprocesses needed.
 ## Status
 
 Early. The JSON event format, the pass/fail/slowest summary, the
-per-package breakdown, and JSON output work. Not yet covered:
-flaky-test detection across repeated runs.
+per-package breakdown, JSON output, and flaky-test detection across
+repeated runs work. Not yet covered: a quiet or fail-fast mode.
 
 ## License
 

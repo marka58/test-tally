@@ -6,6 +6,7 @@
 //	go test -json ./... | testtally
 //	testtally -in run.jsonl
 //	testtally -json | jq .
+//	testtally -flaky run1.jsonl run2.jsonl run3.jsonl
 package main
 
 import (
@@ -21,7 +22,12 @@ import (
 func main() {
 	inPath := flag.String("in", "", "path to a go test -json log (default: stdin)")
 	jsonOut := flag.Bool("json", false, "print the summary as JSON instead of plain text")
+	flaky := flag.Bool("flaky", false, "report tests that both pass and fail across the log files given as arguments")
 	flag.Parse()
+
+	if *flaky {
+		os.Exit(runFlaky(flag.Args(), *jsonOut))
+	}
 
 	in := os.Stdin
 	if *inPath != "" {
@@ -53,6 +59,55 @@ func main() {
 	if summary.Failed > 0 {
 		os.Exit(1)
 	}
+}
+
+// runFlaky reads one go test -json log per path, treats each as a separate
+// run, and prints the tests whose result differed between runs. It returns
+// the process exit code: 1 if any flaky test was found or on error.
+func runFlaky(paths []string, asJSON bool) int {
+	if len(paths) < 2 {
+		fmt.Fprintln(os.Stderr, "testtally: -flaky needs at least two log files")
+		return 1
+	}
+
+	var runs [][]testtally.Event
+	for _, p := range paths {
+		f, err := os.Open(p)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "testtally:", err)
+			return 1
+		}
+		events, err := testtally.ReadEvents(f)
+		f.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "testtally: %s: %v\n", p, err)
+			return 1
+		}
+		runs = append(runs, events)
+	}
+
+	flaky := testtally.Flaky(runs)
+	if asJSON {
+		if flaky == nil {
+			flaky = []testtally.FlakyTest{}
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(flaky); err != nil {
+			fmt.Fprintln(os.Stderr, "testtally:", err)
+			return 1
+		}
+	} else if len(flaky) == 0 {
+		fmt.Printf("no flaky tests in %d runs\n", len(runs))
+	} else {
+		fmt.Printf("%d flaky in %d runs:\n", len(flaky), len(runs))
+		for _, t := range flaky {
+			fmt.Printf("  %s %s (%d passed, %d failed)\n", t.Package, t.Test, t.Passed, t.Failed)
+		}
+	}
+
+	if len(flaky) > 0 {
+		return 1
+	}
+	return 0
 }
 
 // printSummaryJSON writes the summary as a single JSON object, so a CI
